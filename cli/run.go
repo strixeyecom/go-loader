@@ -40,21 +40,27 @@ var runCmd = &cobra.Command{
 		if err != nil {
 			panic(err)
 		}
+		
 		// if no endpoints given via flag, use wordlist file
 		if len(config.EndpointWordlist) == 0 {
-			data, err := os.ReadFile(config.EndpointWordlistPath)
-			if err != nil {
-				panic(err)
+			// read from wordlist file if given
+			if config.EndpointWordlistPath != "" {
+				data, err := os.ReadFile(config.EndpointWordlistPath)
+				if err != nil {
+					panic(err)
+				}
+				
+				scanner := bufio.NewScanner(bytes.NewReader(data))
+				scanner.Split(bufio.ScanLines)
+				for scanner.Scan() {
+					config.EndpointWordlist = append(
+						config.EndpointWordlist, scanner.Text(),
+					)
+				}
+			} else {
+				// Fallback endpoint list
+				config.EndpointWordlist = app.DefaultEndpointList
 			}
-			
-			scanner := bufio.NewScanner(bytes.NewReader(data))
-			scanner.Split(bufio.ScanLines)
-			for scanner.Scan() {
-				config.EndpointWordlist = append(
-					config.EndpointWordlist, scanner.Text(),
-				)
-			}
-			
 		}
 		for i := 0; i < config.VisitorCount; i++ {
 			go func() {
