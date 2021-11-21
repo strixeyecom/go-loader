@@ -87,8 +87,6 @@ to simulate the real world.
       [X-Forwarded-For](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Forwarded-For) or
       `CF-CONNECTING-IP`; then visitors can have different ip addresses.
 
-[![Product Name Screen Shot][product-screenshot]](https://strixeye.com)
-
 ### Built With
 
 Thanks to maintainers and communities of the following projects for making development of this CLI easier. Full list of
@@ -154,6 +152,12 @@ Basic building process like the following would suffice.
 
 ```shell
    $ go build -o go-loader cmd/loader.go
+```
+
+## Docker
+
+```shell
+    docker pull go-loader:latest
 ```
 
 ## Downloads
