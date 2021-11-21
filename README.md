@@ -48,12 +48,10 @@
     <li>
       <a href="#usage">Usage</a>
    </li>
-    <li><a href="#downloads">Downloads</a></li>
     <li><a href="#roadmap">Roadmap</a></li>
     <li><a href="#contributing">Contributing</a></li>
     <li><a href="#license">License</a></li>
     <li><a href="#contact">Contact</a></li>
-    <li><a href="#acknowledgements">Acknowledgements</a></li>
   </ol>
 </details>
 
@@ -102,7 +100,8 @@ General information about setting up go-loader locally
 
 Required software and installations.
 
-* go-loader has no external dependencies. It will work on all machines, with supported operating systems.
+* go-loader has no external dependencies. It will work on all machines with supported operating systems and cpu 
+  architectures.
 
 ### Installation
 
