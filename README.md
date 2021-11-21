@@ -47,9 +47,6 @@
     </li>
     <li>
       <a href="#usage">Usage</a>
-         <ul>
-            <li><a href="#agent-installation">Agent Installation</a></li>
-         </ul>
    </li>
     <li><a href="#downloads">Downloads</a></li>
     <li><a href="#roadmap">Roadmap</a></li>
@@ -109,8 +106,29 @@ Required software and installations.
 
 ### Installation
 
-1. Download go-loader for your Operating System and Distribution from <a href="#downloads">here</a>
-   or <a href="#build">build from source</a>
+#### Tarball
+
+1. Download [latest-release] for your operating system/architecture
+2. Unzip binary and place it somewhere in your path
+3. Make it executable
+
+#### Build
+
+Other than Go version 1.16.+, StrixEye CLI has no dependencies/requirements.
+
+Basic building process like the following would suffice.
+
+```shell
+   go build -o go-loader cmd/loader.go
+```
+
+##### Docker
+
+```shell
+    docker pull go-loader:latest
+```
+
+<!-- ROADMAP -->
 
 <!-- USAGE EXAMPLES -->
 
@@ -141,34 +159,6 @@ docker run go-loader run --target-host=target.omer.beer --target-scheme=https -f
 ```
 
 _For more examples, please refer to the [Documentation](https://pkg.go.dev/strixeyecom/go-loader)_
-
-### Installing go-loader
-
-## Build
-
-Other than Go version 1.16.+, StrixEye CLI has no dependencies/requirements.
-
-Basic building process like the following would suffice.
-
-```shell
-   $ go build -o go-loader cmd/loader.go
-```
-
-## Docker
-
-```shell
-    docker pull go-loader:latest
-```
-
-## Downloads
-
-### Tarball
-
-1. Download [latest-release] for your operating system/architecture
-2. Unzip binary and place it somewhere in your path
-3. Make it executable
-
-<!-- ROADMAP -->
 
 ## Roadmap
 
