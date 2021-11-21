@@ -83,12 +83,6 @@ var runCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(runCmd)
 	
-	// Here you will define your flags and configuration settings.
-	
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// runCmd.PersistentFlags().String("foo", "", "A help for foo")
-	
 	// local flags which will only run when this command
 	// is called directly, e.g.:
 	runCmd.Flags().IntP("visitors", "v", 100, "number of concurrent visitors")
@@ -135,7 +129,8 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-	runCmd.Flags().StringArrayP("endpoints", "e", nil, "list if directories to visit")
+	
+	runCmd.Flags().StringSliceP("endpoints", "e", nil, "list if directories to visit")
 	err = viper.BindPFlag("ENDPOINT_WORDLIST", runCmd.Flags().Lookup("endpoints"))
 	if err != nil {
 		panic(err)
