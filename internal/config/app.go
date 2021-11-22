@@ -25,4 +25,6 @@ type App struct {
 	// EndpointWordlist is the wordlist for the endpoint.
 	EndpointWordlist []string `json:"endpoint_wordlist" mapstructure:"ENDPOINT_WORDLIST"`
 	VisitorCount     int      `json:"visitor_count" mapstructure:"VISITOR_COUNT"`
+	// Headers is a map of custom headers to send to the server
+	Headers map[string]string
 }

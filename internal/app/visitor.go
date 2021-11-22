@@ -15,6 +15,7 @@ import (
 	`github.com/pkg/errors`
 	`github.com/sirupsen/logrus`
 	`github.com/strixeyecom/go-loader/internal/ip`
+	`github.com/valyala/fasthttp`
 	`gonum.org/v1/gonum/stat/distuv`
 )
 
@@ -44,10 +45,10 @@ type Visitor struct {
 	sync.Mutex
 	// RequestWaitDistribution decides the distribution of the time it takes for a visitor to make a request
 	requestWaitDistribution distuv.LogNormal
-	// Headers is a map of custom headers to send to the server
-	Headers map[string]string
+	// headers is a map of custom headers to send to the server
+	headers map[string]string
 	// 	Client is the HTTP client to use for the requests
-	client *http.Client
+	client *fasthttp.Client
 	// IP is the IP address of the visitor
 	ip ip.IPv4
 	// requestCount is the number of requests made so far
@@ -64,6 +65,16 @@ type Visitor struct {
 	TargetHost string `json:"target_host" mapstructure:"TARGET_HOST"`
 	// Endpoints is the wordlist for the endpoint.
 	Endpoints []string `json:"endpoint_wordlist" mapstructure:"ENDPOINTS"`
+}
+
+// SetHeader  a header for the visitor
+func (v *Visitor) SetHeader(key, value string) {
+	v.headers[key] = value
+}
+
+// AddHeader a value to given header for the visitor
+func (v *Visitor) AddHeader(key, value string) {
+	v.headers[key] = strings.Join([]string{v.headers[key], value}, ",")
 }
 
 // Ip getter for mock ipv4 address of the visitor
@@ -83,14 +94,16 @@ func NewVisitor() *Visitor {
 	headers[DefaultIPSourceHeader] = randomIP.String()
 	
 	v := Visitor{
-		Headers:                 headers,
+		headers:                 headers,
 		requestWaitDistribution: distuv.LogNormal{Mu: 3, Sigma: 1},
-		client:                  &http.Client{Timeout: time.Second * 25},
-		ip:                      randomIP,
-		SessionLength:           DefaultSessionLength,
-		IPSourceHeader:          DefaultIPSourceHeader,
-		PortSourceHeader:        DefaultPortSourceHeader,
-		Endpoints:               DefaultEndpointList,
+		client: &fasthttp.Client{
+			MaxConnsPerHost: 1e4,
+		},
+		ip:               randomIP,
+		SessionLength:    DefaultSessionLength,
+		IPSourceHeader:   DefaultIPSourceHeader,
+		PortSourceHeader: DefaultPortSourceHeader,
+		Endpoints:        DefaultEndpointList,
 	}
 	
 	return &v
@@ -105,6 +118,8 @@ func (v *Visitor) SetRequestWaitDistribution(requestWaitDistribution distuv.LogN
 
 // Run starts making requests to the target host.
 func (v *Visitor) Run(ctx context.Context) error {
+	fmt.Printf("visitor %s starts with session length %d \n", v.ip.String(), v.SessionLength)
+	
 	var (
 		ticker *time.Ticker
 	)
@@ -114,24 +129,25 @@ func (v *Visitor) Run(ctx context.Context) error {
 			log.Fatal(err)
 		}
 	}()
-	
 	ticker = time.NewTicker(v.getNextWaitTime())
 	for {
 		select {
 		case <-ticker.C:
 			if v.SessionLength > 0 && v.SessionLength <= v.requestCount {
 				fmt.Printf("visitor %s session ends. \n", v.ip.String())
+				ticker.Stop()
 				return nil
 			}
 			v.requestCount++
 			
 			endpoint := v.getNextEndpoint()
 			nextWaitTime := v.getNextWaitTime()
-			logrus.Infof("%s %s %s\n", v.ip.String(), endpoint, nextWaitTime)
+			v.headers[DefaultPortSourceHeader] = ip.RandomPort()
 			err := v.makeRequest(context.Background(), endpoint)
 			if err != nil {
 				return errors.Wrap(err, `failed to make request`)
 			}
+			logrus.Infof("%s %s %s\n", v.ip.String(), endpoint, nextWaitTime)
 			
 			ticker.Stop()
 			// new random ticker
@@ -144,38 +160,38 @@ func (v *Visitor) Run(ctx context.Context) error {
 }
 
 func (v *Visitor) makeRequest(ctx context.Context, endpoint string) error {
+	defer func() {
+		err := recover()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}()
+	
 	u := url.URL{
 		Scheme: v.TargetScheme,
 		Host:   v.TargetHost,
 		Path:   endpoint,
 	}
 	
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
-	if err != nil {
-		return errors.WithMessage(err, "visitor can't create request")
-	}
-	for k, v := range v.Headers {
+	req := fasthttp.AcquireRequest()
+	req.Header.SetMethod(http.MethodGet)
+	req.SetRequestURI(u.String())
+	
+	for k, v := range v.headers {
 		switch strings.ToLower(k) {
-		case "host":
-			req.Host = v
+		// case "host":
+		// 	req.SetHost(v)
 		// TODO: check if there are more cases to add
 		default:
 			req.Header.Set(k, v)
 		}
 	}
-	v.Headers[v.PortSourceHeader] = ip.RandomPort()
 	
 	// execute request
-	resp, err := v.client.Do(req)
+	err := v.client.Do(req, nil)
 	if err != nil {
 		return errors.WithMessage(err, "visitor can't send request")
 	}
-	defer func() {
-		err = resp.Body.Close()
-		if err != nil {
-			panic(err)
-		}
-	}()
 	
 	return nil
 }

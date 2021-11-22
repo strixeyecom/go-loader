@@ -20,6 +20,7 @@ import (
 	`bufio`
 	`bytes`
 	`context`
+	`log`
 	`os`
 	
 	`github.com/sirupsen/logrus`
@@ -27,6 +28,7 @@ import (
 	`github.com/spf13/viper`
 	`github.com/strixeyecom/go-loader/internal/app`
 	`github.com/strixeyecom/go-loader/internal/config`
+	`gonum.org/v1/gonum/stat/distuv`
 )
 
 // runCmd represents the run command
@@ -40,6 +42,15 @@ var runCmd = &cobra.Command{
 		if err != nil {
 			panic(err)
 		}
+		defer func() {
+			err := recover()
+			if err != nil {
+				log.Fatal(err)
+			}
+		}()
+		
+		// distribute session lengths
+		sessionLengthDistribution := distuv.LogNormal{Mu: 3, Sigma: 0.3}
 		
 		// if no endpoints given via flag, use wordlist file
 		if len(config.EndpointWordlist) == 0 {
@@ -64,11 +75,24 @@ var runCmd = &cobra.Command{
 		}
 		for i := 0; i < config.VisitorCount; i++ {
 			go func() {
+				defer func() {
+					err := recover()
+					if err != nil {
+						log.Fatal(err)
+					}
+				}()
 				visitor := app.NewVisitor()
 				
+				// if not set, randomly distribute session lengths
+				if config.SessionLength == 0 {
+					visitor.SessionLength = int(sessionLengthDistribution.Rand())
+				}
 				visitor.Endpoints = config.EndpointWordlist
 				visitor.TargetScheme = config.TargetScheme
 				visitor.TargetHost = config.TargetHost
+				for s, s2 := range config.Headers {
+					visitor.AddHeader(s, s2)
+				}
 				
 				err := visitor.Run(context.Background())
 				if err != nil {
@@ -91,7 +115,7 @@ func init() {
 		panic(err)
 	}
 	
-	runCmd.Flags().IntP("session", "l", 50, "number of requests per visitor")
+	runCmd.Flags().IntP("session", "l", 0, "number of requests per visitor")
 	err = viper.BindPFlag("SESSION_LENGTH", runCmd.Flags().Lookup("session"))
 	if err != nil {
 		panic(err)
