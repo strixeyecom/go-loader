@@ -8,6 +8,7 @@ package config
 	contains the configuration for the application
 */
 
+// App Config is the configuration for the application.
 type App struct {
 	// IPSourceHeader is the header to use for the IP address. Defaults to `X-Forwarded-For`
 	IPSourceHeader string `json:"ip_source_header" mapstructure:"IP_SOURCE_HEADER"`
