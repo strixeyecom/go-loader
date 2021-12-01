@@ -15,7 +15,6 @@ import (
 	`github.com/pkg/errors`
 	`github.com/sirupsen/logrus`
 	`github.com/strixeyecom/go-loader/internal/ip`
-	`github.com/valyala/fasthttp`
 	`gonum.org/v1/gonum/stat/distuv`
 )
 
@@ -48,7 +47,7 @@ type Visitor struct {
 	// headers is a map of custom headers to send to the server
 	headers map[string]string
 	// 	Client is the HTTP client to use for the requests
-	client *fasthttp.Client
+	client *http.Client
 	// IP is the IP address of the visitor
 	ip ip.IPv4
 	// requestCount is the number of requests made so far
@@ -74,6 +73,10 @@ func (v *Visitor) SetHeader(key, value string) {
 
 // AddHeader a value to given header for the visitor
 func (v *Visitor) AddHeader(key, value string) {
+	if len(v.headers[key]) == 0 {
+		v.headers[key] = value
+		return
+	}
 	v.headers[key] = strings.Join([]string{v.headers[key], value}, ",")
 }
 
@@ -96,8 +99,8 @@ func NewVisitor() *Visitor {
 	v := Visitor{
 		headers:                 headers,
 		requestWaitDistribution: distuv.LogNormal{Mu: 3, Sigma: 1},
-		client: &fasthttp.Client{
-			MaxConnsPerHost: 1e4,
+		client: &http.Client{
+			Timeout: time.Second * 15,
 		},
 		ip:               randomIP,
 		SessionLength:    DefaultSessionLength,
@@ -173,24 +176,20 @@ func (v *Visitor) makeRequest(ctx context.Context, endpoint string) error {
 		Path:   endpoint,
 	}
 	
-	req := fasthttp.AcquireRequest()
-	req.Header.SetMethod(http.MethodGet)
-	req.SetRequestURI(u.String())
-	
-	for k, v := range v.headers {
-		switch strings.ToLower(k) {
-		// case "host":
-		// 	req.SetHost(v)
-		// TODO: check if there are more cases to add
-		default:
-			req.Header.Set(k, v)
-		}
-	}
-	
-	// execute request
-	err := v.client.Do(req, nil)
+	req, err := http.NewRequest(
+		http.MethodGet,
+		u.String(), nil,
+	)
 	if err != nil {
-		return errors.WithMessage(err, "visitor can't send request")
+		return err
+	}
+	req.Header.Set("Host", v.TargetHost)
+	for key, value := range v.headers {
+		req.Header.Set(key, value)
+	}
+	_, err = v.client.Do(req)
+	if err != nil {
+		return err
 	}
 	
 	return nil
